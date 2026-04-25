@@ -22,8 +22,6 @@ export default function Layout() {
   const navItems = [
     { name: 'Home', path: '/home' },
     { name: 'Planner', path: '/planner' },
-    { name: 'Search', path: '/search' },
-    { name: 'Explore', path: '/explore' },
     { name: 'Reels', path: '/reels' },
     { name: 'Messages', path: '/messages' },
     { name: 'Notifications', path: '/notifications' },

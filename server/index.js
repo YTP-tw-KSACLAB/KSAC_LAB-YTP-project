@@ -310,6 +310,24 @@ app.get('/api/check-hotel', async (req, res) => {
   }
 });
 
+app.post('/api/book', async (req, res) => {
+  const { cart, details } = req.body;
+  // Simulate network latency for \"booking\"
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  res.json({
+    success: true,
+    message: 'Booking confirmed!',
+    confirmationId: `TV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+    summary: {
+      items: cart?.length || 0,
+      status: 'Confirmed',
+      transport: 'Taxi & MRT Vouchers included',
+      hotel: details?.hotel || 'Selected Legal Hotel'
+    }
+  });
+});
+
+
 app.listen(port, () => {
   console.log(`API server running on http://localhost:${port}`);
   console.log(`Python backend target: ${pythonBackendUrl}`);
