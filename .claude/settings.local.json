@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue; where.exe node 2>$null; where.exe npm 2>$null; Get-ChildItem \"C:\\\\Program Files\\\\nodejs\" -ErrorAction SilentlyContinue | Select-Object -First 5; Get-ChildItem \"$env:APPDATA\\\\npm\" -ErrorAction SilentlyContinue | Select-Object -First 5; Get-ChildItem \"$env:NVM_HOME\" -ErrorAction SilentlyContinue | Select-Object -First 5)",
+      "PowerShell($env:PATH -split ';' | Where-Object { $_ -match 'node|nvm' })",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'node|nvm' } | Select-Object Name)",
+      "PowerShell(Get-ChildItem \"C:\\\\\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'node|nvm' } | Select-Object Name; Get-ChildItem \"$env:LOCALAPPDATA\" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'node|nvm' } | Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\\", \"$env:LOCALAPPDATA\", \"$env:PROGRAMFILES\", \"${env:PROGRAMFILES\\(X86\\)}\" -Recurse -Filter \"npm.cmd\" -ErrorAction SilentlyContinue 2>$null | Select-Object -First 5 FullName)",
+      "PowerShell(Test-Path \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\"; Test-Path \"$env:APPDATA\\\\nvm\\\\nvm.exe\"; Test-Path \"C:\\\\nvm\\\\nvm.exe\"; $env:PATH)",
+      "PowerShell(Get-ItemProperty \"HKCU:\\\\Environment\" -ErrorAction SilentlyContinue | Select-Object PATH; Get-ItemProperty \"HKLM:\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\Session Manager\\\\Environment\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path 2>$null | ForEach-Object { $_ -split ';' } | Where-Object { $_ -match 'node|nvm' })",
+      "PowerShell(cmd /c \"where node 2>nul & where npm 2>nul\")",
+      "PowerShell(cmd /c \"set PATH\" 2>$null)",
+      "PowerShell(Select-String -Pattern \"node|nvm\" -CaseSensitive:$false)"
+    ]
+  }
+}
