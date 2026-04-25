@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 function App() {
@@ -18,37 +18,97 @@ function App() {
 
   const [planning, setPlanning] = useState(false)
   const [planResult, setPlanResult] = useState(null)
+  const [activeNav, setActiveNav] = useState('Home')
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [flashMessage, setFlashMessage] = useState('')
+  const [selectedStory, setSelectedStory] = useState('')
+  const [followedUsers, setFollowedUsers] = useState({})
+  const [likedPosts, setLikedPosts] = useState({})
+  const [savedPosts, setSavedPosts] = useState({})
+  const [sharedPosts, setSharedPosts] = useState({})
 
-  useEffect(() => {
-    const boot = async () => {
-      try {
-        const [healthResponse, overviewResponse, spotsResponse] = await Promise.all([
-          fetch('/api/health'),
-          fetch('/api/datasets/overview'),
-          fetch('/api/spots?limit=6'),
-        ])
+  const plannerRef = useRef(null)
+  const searchInputRef = useRef(null)
 
-        if (!healthResponse.ok || !overviewResponse.ok || !spotsResponse.ok) {
-          throw new Error('Unable to initialize from backend services.')
-        }
+  const navItems = ['Home', 'Search', 'Explore', 'Reels', 'Messages', 'Notifications', 'Create', 'Profile']
 
-        const [healthJson, overviewJson, spotsJson] = await Promise.all([
-          healthResponse.json(),
-          overviewResponse.json(),
-          spotsResponse.json(),
-        ])
+  const suggestionUsers = [
+    { name: 'taipei.vibe', subtitle: 'Travel planner account' },
+    { name: 'city.transit.bot', subtitle: 'MRT and bus updates' },
+    { name: 'foodie.tpe', subtitle: 'Night market explorer' },
+    { name: 'legal.stay.tw', subtitle: 'Accommodation checker' },
+    { name: 'huashan.walks', subtitle: 'Urban culture routes' },
+  ]
 
-        setHealth(healthJson)
-        setOverview(overviewJson)
-        setSpots(spotsJson.spots || [])
-      } catch (bootError) {
-        setError(bootError.message)
-      } finally {
-        setLoadingInit(false)
-      }
+  const parseJsonSafely = async (response) => {
+    const raw = await response.text()
+    if (!raw) {
+      return {}
     }
 
-    boot()
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return { message: raw }
+    }
+  }
+
+  const loadDashboard = useCallback(async () => {
+    setError('')
+
+    try {
+      const [healthResponse, overviewResponse, spotsResponse] = await Promise.all([
+        fetch('/api/health'),
+        fetch('/api/datasets/overview'),
+        fetch('/api/spots?limit=6'),
+      ])
+
+      if (!healthResponse.ok || !overviewResponse.ok || !spotsResponse.ok) {
+        throw new Error('Unable to initialize from backend services.')
+      }
+
+      const [healthJson, overviewJson, spotsJson] = await Promise.all([
+        parseJsonSafely(healthResponse),
+        parseJsonSafely(overviewResponse),
+        parseJsonSafely(spotsResponse),
+      ])
+
+      setHealth(healthJson)
+      setOverview(overviewJson)
+      setSpots(spotsJson.spots || [])
+    } catch (bootError) {
+      setError(bootError.message)
+    } finally {
+      setLoadingInit(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
+
+  useEffect(() => {
+    if (!flashMessage) {
+      return undefined
+    }
+
+    const timer = setTimeout(() => {
+      setFlashMessage('')
+    }, 1800)
+
+    return () => clearTimeout(timer)
+  }, [flashMessage])
+
+  useEffect(() => {
+    setFollowedUsers((previous) => {
+      const next = { ...previous }
+      suggestionUsers.forEach((user) => {
+        if (typeof next[user.name] !== 'boolean') {
+          next[user.name] = false
+        }
+      })
+      return next
+    })
   }, [])
 
   const topMetrics = useMemo(() => {
@@ -70,6 +130,63 @@ function App() {
     setForm((previous) => ({ ...previous, [name]: value }))
   }
 
+  const onNavClick = (item) => {
+    setActiveNav(item)
+
+    if (item === 'Search') {
+      window.setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 0)
+    }
+
+    if (item === 'Create') {
+      plannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setFlashMessage('Composer focused')
+    }
+
+    if (item === 'Messages') {
+      setFlashMessage('Messages synced')
+    }
+
+    if (item === 'Notifications') {
+      setFlashMessage('No new notifications')
+    }
+
+    if (item === 'Profile') {
+      setFlashMessage('Profile preview loaded')
+    }
+  }
+
+  const onStoryClick = (name) => {
+    setSelectedStory(name)
+    setFlashMessage(`Viewing ${name}`)
+  }
+
+  const toggleFollow = (name) => {
+    setFollowedUsers((previous) => ({
+      ...previous,
+      [name]: !previous[name],
+    }))
+  }
+
+  const togglePostAction = (setter, postId) => {
+    setter((previous) => ({
+      ...previous,
+      [postId]: !previous[postId],
+    }))
+  }
+
+  const resetPlannerForm = () => {
+    setForm({
+      style: '文青探索',
+      budget: '中等',
+      duration: '1 day',
+      mustVisit: '台北101',
+      weather: '晴天',
+    })
+    setFlashMessage('Form reset')
+  }
+
   const onGeneratePlan = async (event) => {
     event.preventDefault()
     setPlanning(true)
@@ -82,12 +199,12 @@ function App() {
         body: JSON.stringify(form),
       })
 
-      const data = await response.json()
+      const data = await parseJsonSafely(response)
       if (!response.ok) {
         setPlanResult({
           source: 'gateway-fallback',
-          plan: data.fallback,
-          reason: data.error,
+          plan: data.fallback || null,
+          reason: data.error || data.message || 'Planner request failed.',
         })
         return
       }
@@ -102,119 +219,294 @@ function App() {
 
   const plan = planResult?.plan
   const sourceLabel = planResult?.source || 'none'
+  const stories = spots.slice(0, 8)
+
+  const filteredSpots = useMemo(() => {
+    let next = [...spots]
+    const query = searchKeyword.trim().toLowerCase()
+
+    if (query) {
+      next = next.filter((spot) => {
+        const target = `${spot.name || ''} ${spot.category || ''} ${spot.location || ''}`.toLowerCase()
+        return target.includes(query)
+      })
+    }
+
+    if (activeNav === 'Profile') {
+      return next.slice(0, 2)
+    }
+
+    if (activeNav === 'Reels') {
+      return next.reverse()
+    }
+
+    return next
+  }, [activeNav, searchKeyword, spots])
+
+  const compactDescription = (description) => {
+    if (!description) {
+      return 'No details available.'
+    }
+
+    const compact = description.replace(/\s+/g, ' ').trim()
+    return compact.length > 150 ? `${compact.slice(0, 150)}...` : compact
+  }
 
   return (
-    <main className="page-shell">
-      <section className="hero-panel">
-        <p className="eyebrow">SnapTravel x Taipei Vibe</p>
-        <h1>AI 旅遊規劃中樞</h1>
-        <p>
-          一次整合 React 體驗層、Node API gateway 與 Python AI backend，直接產生可執行的一日旅程。
-        </p>
-        <div className="health-pill-row">
-          <span className="pill">Node: {health?.status || 'loading'}</span>
-          <span className="pill">Python: {health?.python?.status || 'loading'}</span>
-          <span className="pill">AI Source: {sourceLabel}</span>
-        </div>
-      </section>
+    <main className="ig-layout">
+      <aside className="left-nav">
+        <h1 className="brand">SnapTravel</h1>
+        <nav>
+          {navItems.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onNavClick(item)}
+              className={`nav-item ${activeNav === item ? 'active' : ''}`}
+            >
+              <span className="nav-dot" />
+              {item}
+            </button>
+          ))}
+        </nav>
+      </aside>
 
-      <section className="metrics-panel">
-        {loadingInit && <p>載入資料中...</p>}
-        {!loadingInit && topMetrics.map((metric) => (
-          <article key={metric.label} className="metric-card">
-            <h2>{metric.label}</h2>
-            <p>{metric.value}</p>
-          </article>
-        ))}
-      </section>
+      <section className="main-feed">
+        {flashMessage && <p className="flash-banner">{flashMessage}</p>}
 
-      <section className="workspace-grid">
-        <article className="planner-panel">
-          <h2>旅程需求輸入</h2>
-          <form className="planner-form" onSubmit={onGeneratePlan}>
-            <label>
-              旅遊風格
-              <input name="style" value={form.style} onChange={onFormChange} />
-            </label>
-            <label>
-              預算
-              <select name="budget" value={form.budget} onChange={onFormChange}>
-                <option value="省錢">省錢</option>
-                <option value="中等">中等</option>
-                <option value="高端">高端</option>
-              </select>
-            </label>
-            <label>
-              旅程時間
-              <select name="duration" value={form.duration} onChange={onFormChange}>
-                <option value="half day">半日</option>
-                <option value="1 day">一日</option>
-                <option value="2 days">兩日</option>
-              </select>
-            </label>
-            <label>
-              必去景點
-              <input name="mustVisit" value={form.mustVisit} onChange={onFormChange} />
-            </label>
-            <label>
-              天氣條件
-              <select name="weather" value={form.weather} onChange={onFormChange}>
-                <option value="晴天">晴天</option>
-                <option value="雨天">雨天</option>
-                <option value="陰天">陰天</option>
-              </select>
-            </label>
+        <section className="utility-bar">
+          <input
+            ref={searchInputRef}
+            value={searchKeyword}
+            onChange={(event) => setSearchKeyword(event.target.value)}
+            className="search-input"
+            placeholder="Search spots, categories, areas"
+          />
+          <button type="button" className="menu-button" onClick={loadDashboard}>Refresh</button>
+          <button type="button" className="menu-button" onClick={resetPlannerForm}>Reset Form</button>
+        </section>
 
+        <header className="stories-row">
+          {stories.map((story, index) => (
+            <button
+              type="button"
+              key={`${story.id}-${index}`}
+              className={`story-item button-reset ${selectedStory === story.name ? 'active' : ''}`}
+              onClick={() => onStoryClick(story.name || 'Story')}
+            >
+              <span className="story-ring">
+                <span>{story.name?.slice(0, 1) || 'T'}</span>
+              </span>
+              <p>{story.name || 'Story'}</p>
+            </button>
+          ))}
+        </header>
+
+        <article ref={plannerRef} className="post-card planner-post">
+          <div className="post-header">
+            <div className="avatar">SV</div>
+            <div>
+              <h2>taipei.vibe.planner</h2>
+              <p>AI itinerary composer</p>
+            </div>
+          </div>
+
+          <form className="planner-grid" onSubmit={onGeneratePlan}>
+            <input name="style" value={form.style} onChange={onFormChange} placeholder="旅遊風格" />
+            <input name="mustVisit" value={form.mustVisit} onChange={onFormChange} placeholder="必去景點" />
+            <select name="budget" value={form.budget} onChange={onFormChange}>
+              <option value="省錢">省錢</option>
+              <option value="中等">中等</option>
+              <option value="高端">高端</option>
+            </select>
+            <select name="duration" value={form.duration} onChange={onFormChange}>
+              <option value="half day">半日</option>
+              <option value="1 day">一日</option>
+              <option value="2 days">兩日</option>
+            </select>
+            <select name="weather" value={form.weather} onChange={onFormChange}>
+              <option value="晴天">晴天</option>
+              <option value="陰天">陰天</option>
+              <option value="雨天">雨天</option>
+            </select>
             <button type="submit" disabled={planning}>
-              {planning ? '規劃中...' : '產生 AI 行程'}
+              {planning ? 'Generating...' : 'Generate Plan'}
             </button>
           </form>
-          {planResult?.reason && <p className="hint">Fallback reason: {planResult.reason}</p>}
+          <div className="post-actions">
+            <button type="button" className="action-btn" onClick={() => setFlashMessage('Draft saved')}>Save Draft</button>
+            <button type="button" className="action-btn" onClick={() => setFlashMessage('Rain mode applied')}>Rain Mode</button>
+            <button type="button" className="action-btn" onClick={resetPlannerForm}>Clear</button>
+          </div>
+          {planResult?.reason && <p className="inline-note">Fallback: {planResult.reason}</p>}
         </article>
 
-        <article className="timeline-panel">
-          <h2>行程時間軸</h2>
-          {!plan && <p>送出需求後，這裡會顯示完整時間軸。</p>}
-          {plan && (
-            <>
-              <h3>{plan.title}</h3>
-              <p>{plan.summary}</p>
-              <ul className="timeline">
-                {(plan.steps || []).map((step) => (
-                  <li key={`${step.time}-${step.activity}`}>
-                    <strong>{step.time}</strong>
-                    <span>{step.activity}</span>
-                    <small>{step.transport} | {step.note}</small>
-                  </li>
-                ))}
-              </ul>
-              <div className="safety-box">
-                <h4>安全提醒</h4>
-                <ul>
-                  {(plan.safety || []).map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
+        {plan && (
+          <article className="post-card">
+            <div className="post-header">
+              <div className="avatar alt">AI</div>
+              <div>
+                <h2>{plan.title}</h2>
+                <p>Source: {sourceLabel}</p>
               </div>
-            </>
-          )}
+            </div>
+            <p className="post-summary">{plan.summary}</p>
+            <div className="post-actions">
+              <button
+                type="button"
+                className={`action-btn ${likedPosts.plan ? 'on' : ''}`}
+                onClick={() => togglePostAction(setLikedPosts, 'plan')}
+              >
+                {likedPosts.plan ? 'Liked' : 'Like'}
+              </button>
+              <button
+                type="button"
+                className={`action-btn ${savedPosts.plan ? 'on' : ''}`}
+                onClick={() => togglePostAction(setSavedPosts, 'plan')}
+              >
+                {savedPosts.plan ? 'Saved' : 'Save'}
+              </button>
+              <button
+                type="button"
+                className={`action-btn ${sharedPosts.plan ? 'on' : ''}`}
+                onClick={() => togglePostAction(setSharedPosts, 'plan')}
+              >
+                {sharedPosts.plan ? 'Shared' : 'Share'}
+              </button>
+            </div>
+            <ul className="timeline-list">
+              {(plan.steps || []).map((step, index) => (
+                <li key={`${step.time || 'time'}-${index}`}>
+                  <strong>{step.time}</strong>
+                  <span>{step.activity}</span>
+                  <small>{step.transport} · {step.note}</small>
+                </li>
+              ))}
+            </ul>
+          </article>
+        )}
+
+        {activeNav === 'Messages' && (
+          <article className="post-card status-panel">
+            <h3>Messages</h3>
+            <p>Group planning chat is ready. Invite collaborators from the right rail.</p>
+            <button type="button" className="menu-button" onClick={() => onNavClick('Home')}>Back to Home</button>
+          </article>
+        )}
+
+        {activeNav === 'Notifications' && (
+          <article className="post-card status-panel">
+            <h3>Notifications</h3>
+            <p>No urgent alerts. Weather and legal-stay checks are currently normal.</p>
+            <button type="button" className="menu-button" onClick={() => onNavClick('Home')}>Back to Home</button>
+          </article>
+        )}
+
+        {filteredSpots.map((spot, index) => {
+          const postId = `spot-${spot.id || index}`
+
+          return (
+          <article key={spot.id || `${spot.name}-${index}`} className="post-card">
+            <div className="post-header">
+              <div className="avatar">{spot.name?.slice(0, 1) || 'T'}</div>
+              <div>
+                <h2>{spot.name}</h2>
+                <p>{spot.category} · {spot.location}</p>
+              </div>
+            </div>
+            <div className="post-image" data-tone={index % 4} />
+            <p className="post-summary">{compactDescription(spot.description)}</p>
+            <div className="post-actions">
+              <button
+                type="button"
+                className={`action-btn ${likedPosts[postId] ? 'on' : ''}`}
+                onClick={() => togglePostAction(setLikedPosts, postId)}
+              >
+                {likedPosts[postId] ? 'Liked' : 'Like'}
+              </button>
+              <button
+                type="button"
+                className={`action-btn ${savedPosts[postId] ? 'on' : ''}`}
+                onClick={() => togglePostAction(setSavedPosts, postId)}
+              >
+                {savedPosts[postId] ? 'Saved' : 'Save'}
+              </button>
+              <button
+                type="button"
+                className={`action-btn ${sharedPosts[postId] ? 'on' : ''}`}
+                onClick={() => togglePostAction(setSharedPosts, postId)}
+              >
+                {sharedPosts[postId] ? 'Shared' : 'Share'}
+              </button>
+            </div>
+          </article>
+          )
+        })}
+
+        {!filteredSpots.length && (
+          <article className="post-card status-panel">
+            <h3>No matches found</h3>
+            <p>Try another keyword or switch to Home to view all spots.</p>
+          </article>
+        )}
+
+        {error && <p className="error-banner">{error}</p>}
+      </section>
+
+      <aside className="right-rail">
+        <article className="profile-card">
+          <div className="avatar large">LK</div>
+          <div>
+            <h3>linche.taiwan</h3>
+            <p>Luke Lin</p>
+          </div>
         </article>
-      </section>
 
-      <section className="spot-panel">
-        <h2>景點樣本資料</h2>
-        <div className="spot-grid">
-          {spots.map((spot) => (
-            <article key={spot.id} className="spot-card">
-              <h3>{spot.name}</h3>
-              <p className="spot-category">{spot.category} | {spot.location}</p>
-              <p>{spot.description}</p>
-            </article>
+        <section className="health-box">
+          <h4>System status</h4>
+          <p>Node: {health?.status || 'loading'}</p>
+          <p>Python: {health?.python?.status || 'loading'}</p>
+          <p>AI source: {sourceLabel}</p>
+        </section>
+
+        <section className="metrics-box">
+          <h4>Taipei dataset overview</h4>
+          {loadingInit && <p>Loading...</p>}
+          {!loadingInit && topMetrics.map((metric) => (
+            <p key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong></p>
           ))}
-        </div>
-      </section>
+        </section>
 
-      {error && <p className="error-banner">{error}</p>}
+        <section className="suggestions-box">
+          <h4>Suggested for you</h4>
+          {suggestionUsers.map((user) => (
+            <div key={user.name} className="suggestion-item">
+              <div className="avatar mini">{user.name.slice(0, 1).toUpperCase()}</div>
+              <div>
+                <p>{user.name}</p>
+                <small>{user.subtitle}</small>
+              </div>
+              <button type="button" className="suggest-btn" onClick={() => toggleFollow(user.name)}>
+                {followedUsers[user.name] ? 'Following' : 'Follow'}
+              </button>
+            </div>
+          ))}
+        </section>
+      </aside>
+
+      <nav className="mobile-nav">
+        {navItems.slice(0, 5).map((item) => (
+          <button
+            key={`mobile-${item}`}
+            type="button"
+            onClick={() => onNavClick(item)}
+            className={`nav-item mobile-item ${activeNav === item ? 'active' : ''}`}
+          >
+            <span className="nav-dot" />
+            {item}
+          </button>
+        ))}
+      </nav>
     </main>
   )
 }

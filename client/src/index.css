@@ -2,11 +2,8 @@
 
 :root {
   font-family: 'Barlow', sans-serif;
-  color: #102331;
-  background:
-    radial-gradient(circle at 10% 15%, #f8efe0 0%, transparent 35%),
-    radial-gradient(circle at 90% 85%, #e0f0ea 0%, transparent 38%),
-    #f4f6f8;
+  color: #111111;
+  background: #fafafa;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,6 +17,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background: #fafafa;
 }
 
 h1,
