@@ -125,7 +125,7 @@ def build_fallback_itinerary(payload):
 
 def call_gemini_for_plan(payload):
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash-8b")
+    model = payload.get("model") or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
     if not api_key:
         return {
@@ -208,6 +208,31 @@ def plan():
     return jsonify(result)
 
 
+@app.get("/models")
+def get_models():
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return jsonify({"models": ["gemini-1.5-flash", "gemini-1.5-pro"]})
+
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    try:
+        response = requests.get(endpoint, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Filter to only generation models
+        models = [
+            m["name"].split("/")[-1] for m in data.get("models", [])
+            if "generateContent" in m.get("supportedGenerationMethods", [])
+        ]
+        if not models:
+            models = ["gemini-1.5-flash", "gemini-1.5-pro"]
+            
+        return jsonify({"models": models})
+    except Exception:
+        return jsonify({"models": ["gemini-1.5-flash", "gemini-1.5-pro"]})
+
+
 @app.post("/chat")
 def chat():
     payload = request.get_json(silent=True) or {}
@@ -217,7 +242,7 @@ def chat():
         return jsonify({"reply": "Hello! I am your AI travel agent. How can I help you today?"})
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash-8b")
+    model = payload.get("model") or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     
     if not api_key:
         return jsonify({"reply": "[Fallback Mode] No API key configured. I'm a static bot right now, but feel free to ask about Taipei!"})

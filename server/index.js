@@ -248,6 +248,16 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+app.get('/api/models', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/models`);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
 app.get('/api/check-hotel', async (req, res) => {
   const query = (req.query.q || '').toLowerCase().trim();
   if (!query) {

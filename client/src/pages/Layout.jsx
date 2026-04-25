@@ -21,6 +21,7 @@ export default function Layout() {
 
   const navItems = [
     { name: 'Home', path: '/home' },
+    { name: 'Planner', path: '/planner' },
     { name: 'Search', path: '/search' },
     { name: 'Explore', path: '/explore' },
     { name: 'Reels', path: '/reels' },
@@ -59,61 +60,6 @@ export default function Layout() {
     </div>
   );
 
-  const onFormChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const resetPlannerForm = () => {
-    setForm({
-      style: '文青探索',
-      budget: '中等',
-      duration: '1 day',
-      mustVisit: '台北101',
-      weather: '晴天',
-    });
-    setFlashMessage('Form reset');
-  };
-
-  const applyRainMode = async () => {
-    setFlashMessage('Rain mode applied. Searching indoor options...');
-    setForm(prev => ({ ...prev, weather: 'rain' }));
-    setPlanning(true);
-    try {
-      const response = await fetch('/api/plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, weather: 'rain' }),
-      });
-      const data = await parseJsonSafely(response);
-      setPlanResult(data);
-      if (location.pathname !== '/home') navigate('/home');
-    } catch (err) {
-      setFlashMessage(err.message);
-    } finally {
-      setPlanning(false);
-    }
-  };
-
-  const onGeneratePlan = async (event) => {
-    event.preventDefault();
-    setPlanning(true);
-    try {
-      const response = await fetch('/api/plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await parseJsonSafely(response);
-      setPlanResult(data);
-      if (location.pathname !== '/home') navigate('/home');
-    } catch (plannerError) {
-      setFlashMessage(plannerError.message);
-    } finally {
-      setPlanning(false);
-    }
-  };
-
   const handleLegalCheck = async (e) => {
     e.preventDefault();
     if (!legalQuery.trim()) return;
@@ -140,13 +86,11 @@ export default function Layout() {
     ];
   }, [overview]);
 
-  const sourceLabel = 'gemini';
-
   return (
-    <main className="ig-layout">
+    <main className={`ig-layout ${location.pathname.startsWith('/home') ? 'has-right-rail' : ''}`}>
       {showAuth && <AuthModal />}
       
-      {/* Left Navigation and Planner */}
+      {/* Left Navigation */}
       <aside className="left-nav" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <div>
           <h1 className="brand">SnapTravel</h1>
@@ -176,42 +120,6 @@ export default function Layout() {
             )}
           </nav>
         </div>
-
-        {/* Planner moved to left nav */}
-        <article className="post-card planner-post" style={{ padding: '1rem', background: 'rgba(0,0,0,0.1)' }}>
-          <div className="post-header">
-            <div className="avatar">AI</div>
-            <div>
-              <h2 style={{fontSize: '0.9rem'}}>Trip Planner</h2>
-            </div>
-          </div>
-          <form className="planner-grid" style={{ gridTemplateColumns: '1fr', gap: '0.5rem' }} onSubmit={onGeneratePlan}>
-            <input name="style" value={form.style} onChange={onFormChange} placeholder="旅遊風格" />
-            <input name="mustVisit" value={form.mustVisit} onChange={onFormChange} placeholder="必去景點" />
-            <select name="budget" value={form.budget} onChange={onFormChange}>
-              <option value="省錢">省錢</option>
-              <option value="中等">中等</option>
-              <option value="高端">高端</option>
-            </select>
-            <select name="duration" value={form.duration} onChange={onFormChange}>
-              <option value="half day">半日</option>
-              <option value="1 day">一日</option>
-              <option value="2 days">兩日</option>
-            </select>
-            <select name="weather" value={form.weather} onChange={onFormChange}>
-              <option value="晴天">晴天</option>
-              <option value="陰天">陰天</option>
-              <option value="雨天">雨天</option>
-            </select>
-            <button type="submit" disabled={planning} style={{ width: '100%', marginTop: '0.5rem' }}>
-              {planning ? 'Generating...' : 'Generate Plan'}
-            </button>
-          </form>
-          <div className="post-actions" style={{ flexDirection: 'column', gap: '0.4rem', marginTop: '0.8rem' }}>
-            <button type="button" className="action-btn" onClick={applyRainMode} style={{ justifyContent: 'center' }}>Rain Mode</button>
-            <button type="button" className="action-btn" onClick={resetPlannerForm} style={{ justifyContent: 'center' }}>Clear</button>
-          </div>
-        </article>
       </aside>
 
       {/* Main Feed Outlet */}
@@ -220,50 +128,52 @@ export default function Layout() {
         <Outlet />
       </section>
 
-      {/* Right Rail */}
-      <aside className="right-rail">
-        <article className="profile-card">
-          <div className="avatar large">{user ? user.slice(0, 2).toUpperCase() : 'GS'}</div>
-          <div>
-            <h3>{user ? user : 'Guest User'}</h3>
-            <p>{user ? 'Online' : 'Not logged in'}</p>
-          </div>
-        </article>
-
-        <section className="legal-check-box">
-          <h4>🏨 Legal Stay Check</h4>
-          <form onSubmit={handleLegalCheck} className="legal-form">
-            <input 
-              type="text" 
-              placeholder="Hotel name or URL" 
-              value={legalQuery} 
-              onChange={e => setLegalQuery(e.target.value)} 
-            />
-            <button type="submit" disabled={isLegalLoading}>Verify</button>
-          </form>
-          {legalResult && (
-            <div className={`legal-result ${legalResult.legal ? 'legal-ok' : 'legal-warn'}`}>
-              <p>{legalResult.message}</p>
-              {!legalResult.legal && legalResult.recommendations && (
-                <div className="legal-recs">
-                  <small>Try these verified alternatives:</small>
-                  <ul>
-                    {legalResult.recommendations.map((rec, i) => <li key={i}>{rec}</li>)}
-                  </ul>
-                </div>
-              )}
+      {/* Right Rail - Only on Home */}
+      {location.pathname.startsWith('/home') && (
+        <aside className="right-rail">
+          <article className="profile-card">
+            <div className="avatar large">{user ? user.slice(0, 2).toUpperCase() : 'GS'}</div>
+            <div>
+              <h3>{user ? user : 'Guest User'}</h3>
+              <p>{user ? 'Online' : 'Not logged in'}</p>
             </div>
-          )}
-        </section>
+          </article>
 
-        <section className="metrics-box">
-          <h4>Taipei dataset overview</h4>
-          {loadingInit && <p>Loading...</p>}
-          {!loadingInit && topMetrics.map((metric) => (
-            <p key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong></p>
-          ))}
-        </section>
-      </aside>
+          <section className="metrics-box">
+            <h4>✨ AI Suggested Routes</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1rem' }}>
+              <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.8rem', borderRadius: '8px' }}>
+                <strong style={{ display: 'block', marginBottom: '0.2rem' }}>☕ Dadaocheng Retro Walk</strong>
+                <small style={{ color: '#94a3b8' }}>A relaxing half-day route focusing on historic architecture and local cafes.</small>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.8rem', borderRadius: '8px' }}>
+                <strong style={{ display: 'block', marginBottom: '0.2rem' }}>🌲 Elephant Mountain Sunset</strong>
+                <small style={{ color: '#94a3b8' }}>Late afternoon hike for the best views of Taipei 101, ending with a night market.</small>
+              </div>
+            </div>
+          </section>
+
+          <section className="suggestions-box">
+            <h4>🔥 Top Hot Routes from Friends</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <div className="avatar mini" style={{ margin: 0 }}>F</div>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '0.9rem' }}>foodie.tpe's Midnight Snack</strong>
+                  <small style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Saved 2k+ times</small>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <div className="avatar mini" style={{ margin: 0 }}>T</div>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '0.9rem' }}>taipei.vibe's Hidden Bars</strong>
+                  <small style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Saved 1.5k+ times</small>
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+      )}
 
       {/* Mobile nav placeholder */}
       <nav className="mobile-nav">

@@ -3,9 +3,13 @@
   margin: 0 auto;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px minmax(420px, 1fr) 340px;
+  grid-template-columns: 260px 1fr;
   gap: 2rem;
   padding: 1.5rem 0;
+}
+
+.ig-layout.has-right-rail {
+  grid-template-columns: 260px minmax(420px, 1fr) 340px;
 }
 
 .left-nav {

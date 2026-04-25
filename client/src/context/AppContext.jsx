@@ -11,7 +11,7 @@ export const AppProvider = ({ children }) => {
   const [socialPosts, setSocialPosts] = useState([])
   const [loadingInit, setLoadingInit] = useState(true)
   const [error, setError] = useState('')
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState('luke')
   
   const [flashMessage, setFlashMessage] = useState('')
   
