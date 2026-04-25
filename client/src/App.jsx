@@ -7,6 +7,10 @@ function App() {
   const [spots, setSpots] = useState([])
   const [loadingInit, setLoadingInit] = useState(true)
   const [error, setError] = useState('')
+  const [user, setUser] = useState(null)
+  const [showAuth, setShowAuth] = useState(false)
+  const [authData, setAuthData] = useState({ username: '', email: '' })
+  const [isRegistering, setIsRegistering] = useState(true)
 
   const [form, setForm] = useState({
     style: '文青探索',
@@ -31,6 +35,37 @@ function App() {
   const searchInputRef = useRef(null)
 
   const navItems = ['Home', 'Search', 'Explore', 'Reels', 'Messages', 'Notifications', 'Create', 'Profile']
+
+  const handleAuth = async () => {
+    const endpoint = isRegistering ? '/api/register' : '/api/login'
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(authData),
+    })
+    if (response.ok) {
+      setUser(authData.username)
+      setShowAuth(false)
+      setFlashMessage(`Welcome ${authData.username}`)
+    } else {
+      setError('Auth failed')
+    }
+  }
+
+  const AuthModal = () => (
+    <div className="auth-modal">
+      <div className="auth-card">
+        <h3>{isRegistering ? 'Sign Up' : 'Log In'}</h3>
+        <input placeholder="Username" onChange={(e) => setAuthData({...authData, username: e.target.value})} />
+        {isRegistering && <input placeholder="Email" onChange={(e) => setAuthData({...authData, email: e.target.value})} />}
+        <button onClick={handleAuth}>{isRegistering ? 'Register' : 'Login'}</button>
+        <button onClick={() => setIsRegistering(!isRegistering)}>
+          {isRegistering ? 'Switch to Login' : 'Switch to Sign Up'}
+        </button>
+      </div>
+    </div>
+  )
+// ... rest of the code ...
 
   const suggestionUsers = [
     { name: 'taipei.vibe', subtitle: 'Travel planner account' },
@@ -254,6 +289,7 @@ function App() {
 
   return (
     <main className="ig-layout">
+      {showAuth && <AuthModal />}
       <aside className="left-nav">
         <h1 className="brand">SnapTravel</h1>
         <nav>
@@ -261,13 +297,22 @@ function App() {
             <button
               key={item}
               type="button"
-              onClick={() => onNavClick(item)}
+              onClick={() => {
+                if (item === 'Profile' && !user) {
+                  setShowAuth(true)
+                } else {
+                  onNavClick(item)
+                }
+              }}
               className={`nav-item ${activeNav === item ? 'active' : ''}`}
             >
               <span className="nav-dot" />
               {item}
             </button>
           ))}
+          {!user && (
+            <button className="nav-item" onClick={() => setShowAuth(true)}>Login/Sign Up</button>
+          )}
         </nav>
       </aside>
 
