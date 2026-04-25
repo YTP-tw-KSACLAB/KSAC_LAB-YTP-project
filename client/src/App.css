@@ -1,0 +1,51 @@
+.app {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.hero {
+  text-align: left;
+}
+
+.badge {
+  display: inline-block;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a24f00;
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+}
+
+.status-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.card {
+  border: 1px solid #d7dbe0;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 1rem;
+  text-align: left;
+  box-shadow: 0 8px 20px rgba(25, 31, 38, 0.06);
+}
+
+.card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.steps ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.steps li + li {
+  margin-top: 0.35rem;
+}
