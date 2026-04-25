@@ -20,10 +20,58 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    posts = db.relationship('Post', backref='author', lazy=True)
 
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    location = db.Column(db.String(120))
+    image_url = db.Column(db.String(200))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
     db.create_all()
+    
+    if User.query.count() == 0:
+        dummy_users = [
+            User(username="taipei.vibe", email="vibe@example.com"),
+            User(username="city.transit.bot", email="transit@example.com"),
+            User(username="foodie.tpe", email="foodie@example.com"),
+            User(username="legal.stay.tw", email="legal@example.com"),
+            User(username="luke", email="luke@example.com"),
+        ]
+        db.session.add_all(dummy_users)
+        db.session.commit()
+
+        dummy_posts = [
+            Post(
+                content="Just had the best stinky tofu at Shenkeng! The crust is so crispy.",
+                location="Shenkeng Old Street",
+                user_id=dummy_users[2].id,
+                image_url="https://images.unsplash.com/photo-1544053916-2a7bf8d58c89?auto=format&fit=crop&q=80&w=400&h=300"
+            ),
+            Post(
+                content="Watching the sunset from Elephant Mountain. Unbeatable view of Taipei 101. 🌆",
+                location="Elephant Mountain",
+                user_id=dummy_users[0].id,
+                image_url="https://images.unsplash.com/photo-1470004914212-05527e49370b?auto=format&fit=crop&q=80&w=400&h=300"
+            ),
+            Post(
+                content="MRT Tamsui-Xinyi Line is running with slight delays today due to a signal issue.",
+                location="Taipei MRT",
+                user_id=dummy_users[1].id,
+                image_url=""
+            ),
+            Post(
+                content="Remember to always verify the registration number of your B&B before booking!",
+                location="Taipei",
+                user_id=dummy_users[3].id,
+                image_url="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=400&h=300"
+            ),
+        ]
+        db.session.add_all(dummy_posts)
+        db.session.commit()
 
 
 def build_fallback_itinerary(payload):
@@ -91,15 +139,19 @@ def call_gemini_for_plan(payload):
         f"?key={api_key}"
     )
 
+    weather_note = ""
+    if payload.get("weather") == "rain":
+        weather_note = " IMPORTANT: The user indicated it is raining. Please prioritize indoor attractions, museums, and cafes, and avoid outdoor hiking or night markets."
+
     planner_prompt = {
         "role": "user",
         "parts": [
             {
                 "text": (
                     "You are an itinerary planner for Taipei. Return strict JSON with keys "
-                    "title, summary, steps (array of {time, activity, transport, note}), "
-                    "safety (array of strings). No markdown.\n"
-                    f"User preferences: {json.dumps(payload, ensure_ascii=False)}"
+                    "title, summary, steps (array of {time, activity, transport, note, lat, lng}), "
+                    "safety (array of strings). Include rough coordinates (lat, lng) for each step if possible. No markdown.\n"
+                    f"User preferences: {json.dumps(payload, ensure_ascii=False)}.{weather_note}"
                 )
             }
         ],
@@ -156,6 +208,59 @@ def plan():
     return jsonify(result)
 
 
+@app.post("/chat")
+def chat():
+    payload = request.get_json(silent=True) or {}
+    messages = payload.get("messages", [])
+    
+    if not messages:
+        return jsonify({"reply": "Hello! I am your AI travel agent. How can I help you today?"})
+
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash-8b")
+    
+    if not api_key:
+        return jsonify({"reply": "[Fallback Mode] No API key configured. I'm a static bot right now, but feel free to ask about Taipei!"})
+
+    endpoint = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        f"?key={api_key}"
+    )
+    
+    # Construct history
+    contents = []
+    for msg in messages:
+        role = "user" if msg.get("sender") == "user" else "model"
+        contents.append({
+            "role": role,
+            "parts": [{"text": msg.get("text", "")}]
+        })
+        
+    # Prepend system instruction as the first user message if history is empty, 
+    # but Gemini API has a specific format. We'll just inject it.
+    if contents and contents[0]["role"] == "user":
+        contents[0]["parts"][0]["text"] = "You are a helpful travel assistant for Taipei. Keep responses concise, friendly, and helpful.\n" + contents[0]["parts"][0]["text"]
+
+    try:
+        response = requests.post(
+            endpoint,
+            json={"contents": contents},
+            timeout=15,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        text = ""
+        candidates = data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            text = "\n".join(part.get("text", "") for part in parts).strip()
+            
+        return jsonify({"reply": text})
+    except Exception as exc:
+        return jsonify({"reply": f"Sorry, I encountered an error: {str(exc)}"})
+
+
 @app.post("/register")
 def register():
     data = request.get_json()
@@ -172,3 +277,23 @@ def login():
     if user:
         return jsonify({"message": "Login successful"}), 200
     return jsonify({"message": "User not found"}), 404
+
+
+@app.get("/posts")
+def get_posts():
+    posts = Post.query.order_by(Post.created_at.desc()).all()
+    result = []
+    for post in posts:
+        result.append({
+            "id": post.id,
+            "content": post.content,
+            "location": post.location,
+            "image_url": post.image_url,
+            "username": post.author.username,
+            "created_at": post.created_at.isoformat() + "Z"
+        })
+    return jsonify({"posts": result}), 200
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=True)

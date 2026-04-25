@@ -147,6 +147,16 @@ app.get('/api/spots', async (req, res) => {
   }
 });
 
+app.get('/api/posts', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/posts`);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
   try {
     const response = await fetch(`${pythonBackendUrl}/register`, {
@@ -221,6 +231,72 @@ app.post('/api/plan', async (req, res) => {
         safety: ['Verify legal accommodation list before checkout.'],
       },
     });
+  }
+});
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
+app.get('/api/check-hotel', async (req, res) => {
+  const query = (req.query.q || '').toLowerCase().trim();
+  if (!query) {
+    return res.status(400).json({ error: 'Query parameter "q" is required' });
+  }
+
+  try {
+    const [hotels, hostels] = await Promise.all([
+      readCsvRecords(datasetFiles.hotel, 1000),
+      readCsvRecords(datasetFiles.hostel, 1000)
+    ]);
+    
+    // Combine both arrays
+    const allAccommodations = [...hotels, ...hostels];
+    
+    // Fuzzy search for matching name or URL placeholder
+    // The columns might be '旅宿名稱', '名稱', etc. 
+    // We will just do a JSON stringify check for simplicity
+    const match = allAccommodations.find(acc => {
+      const values = Object.values(acc).join(' ').toLowerCase();
+      return values.includes(query);
+    });
+
+    if (match) {
+      // Find name field heuristically
+      const name = match['旅館名稱'] || match['民宿名稱'] || match['名稱'] || match.name || 'Unknown Accommodation';
+      return res.json({
+        legal: true,
+        message: `✅ Found legal registration for: ${name}`,
+        details: match
+      });
+    }
+
+    // If not found, return illegal and 3 random recommendations
+    const recommendations = [];
+    for (let i = 0; i < 3; i++) {
+      const randomIndex = Math.floor(Math.random() * hotels.length);
+      const acc = hotels[randomIndex];
+      const name = acc['旅館名稱'] || acc['民宿名稱'] || acc['名稱'] || acc.name || 'Legal Hotel';
+      recommendations.push(name);
+    }
+
+    return res.json({
+      legal: false,
+      message: `⚠️ WARNING: "${query}" was not found in the legal accommodation registry. It may be unregistered or illegal.`,
+      recommendations
+    });
+  } catch (error) {
+    res.status(500).json({ error: `Failed to check accommodation: ${error.message}` });
   }
 });
 
