@@ -4,11 +4,26 @@ from datetime import datetime
 
 import requests
 from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 
 
 app = Flask(__name__)
 load_dotenv()
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db = SQLAlchemy(app)
+
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
+
+with app.app_context():
+    db.create_all()
 
 
 def build_fallback_itinerary(payload):
@@ -141,6 +156,19 @@ def plan():
     return jsonify(result)
 
 
-if __name__ == "__main__":
-    port = int(os.getenv("PY_BACKEND_PORT", "8000"))
-    app.run(host="127.0.0.1", port=port, debug=False)
+@app.post("/register")
+def register():
+    data = request.get_json()
+    new_user = User(username=data["username"], email=data["email"])
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({"message": "User registered successfully"}), 201
+
+
+@app.post("/login")
+def login():
+    data = request.get_json()
+    user = User.query.filter_by(username=data["username"]).first()
+    if user:
+        return jsonify({"message": "Login successful"}), 200
+    return jsonify({"message": "User not found"}), 404

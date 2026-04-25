@@ -147,6 +147,34 @@ app.get('/api/spots', async (req, res) => {
   }
 });
 
+app.post('/api/register', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
 app.post('/api/plan', async (req, res) => {
   const payload = req.body || {};
 
