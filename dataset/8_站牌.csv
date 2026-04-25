@@ -1,0 +1,2 @@
+﻿檔案名稱,縣市,縣市代碼,介接網址,主要欄位說明,更新頻率,檔案格式,說明文件網址
+站牌,臺北市,63000,https://tcgbusfs.blob.core.windows.net/blobbus/GetStop.gz,Id(站牌代碼)、routeId(主路線ID)、nameZh(中文名稱)、nameEn(英文名稱)、seqNo(於路線上的順序)、pgp(上下車站別 -1：可下車、0：可上下車、1：可上車)、goBack、(去返程 0：去程 / 1：返程 / 2：未知）、longitude(經度)、latitude(緯度)、address(地址)、stopLocationId(站位 ID)、showLon(顯示用經度)、showLat(顯示用緯度)、vector(向量角：0~359，預設為空白),每日,GZ,https://www.pto.gov.taipei/News_Content.aspx?n=A1DF07A86105B6BB&s=55E8ADD164E4F579&sms=2479B630A6BD8079

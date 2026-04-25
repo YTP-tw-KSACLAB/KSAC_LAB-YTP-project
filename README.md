@@ -1,32 +1,75 @@
 # KSAC_LAB-YTP-project1
 
-This workspace contains:
+Taipei Vibe full-stack prototype with:
 
-- `client`: React app (Vite)
-- `server`: Node.js API (Express)
+- React frontend (Vite) in client
+- Node.js API gateway (Express) in server
+- Python AI planner backend (Flask) in python_backend
+
+## Architecture
+
+- Frontend calls Node gateway with /api routes.
+- Node gateway reads local Taipei datasets and forwards planning requests to Python service.
+- Python service calls Gemini with the configured model and key.
+- If Gemini is unavailable, Python returns a structured local fallback itinerary.
 
 ## Quick start
 
-From the project root:
+1. Install Node dependencies at project root:
+
+```bash
+npm install
+```
+
+2. Install Python dependencies:
+
+```bash
+python3 -m pip install -r python_backend/requirements.txt
+```
+
+3. Configure environment files:
+
+- Copy server/.env.example to server/.env
+- Copy python_backend/.env.example to python_backend/.env
+- Put your Gemini key in python_backend/.env as GEMINI_API_KEY
+- For a lightweight model, keep GEMINI_MODEL=gemini-1.5-flash-8b
+
+4. Run all services:
 
 ```bash
 npm run dev
 ```
 
+5. Open:
+
 - Frontend: http://localhost:5173
-- Backend API: http://localhost:5001
+- Node API: http://localhost:5001/api/health
+- Python API: http://127.0.0.1:8000/health
 
-## Useful scripts
+## Root scripts
 
-At root:
+- npm run dev: run client + node + python together
+- npm run dev:client: run React app only
+- npm run dev:server: run Node gateway only
+- npm run dev:python: run Python AI backend only
+- npm run build: build frontend
+- npm run start: run Node gateway in production mode
 
-- `npm run dev` - run frontend + backend together
-- `npm run dev:client` - run only React app
-- `npm run dev:server` - run only API server
-- `npm run build` - build frontend for production
-- `npm run start` - run backend in production mode
+## API endpoints
 
-## API starter endpoints
+- GET /api/health
+- GET /api/datasets/overview
+- GET /api/spots?limit=6
+- POST /api/plan
 
-- `GET /api/health`
-- `GET /api/message`
+Example POST /api/plan body:
+
+```json
+{
+	"style": "文青探索",
+	"budget": "中等",
+	"duration": "1 day",
+	"mustVisit": "台北101",
+	"weather": "晴天"
+}
+```

@@ -1,51 +1,224 @@
-.app {
+.page-shell {
+  width: min(1200px, 100% - 2rem);
+  margin: 1.2rem auto 2rem;
   display: grid;
-  gap: 1.25rem;
+  gap: 1.2rem;
 }
 
-.hero {
-  text-align: left;
+.hero-panel {
+  border-radius: 24px;
+  padding: 1.4rem;
+  color: #f7f4ef;
+  background:
+    radial-gradient(circle at 5% 10%, rgba(255, 201, 120, 0.35), transparent 35%),
+    radial-gradient(circle at 95% 90%, rgba(118, 220, 194, 0.3), transparent 32%),
+    linear-gradient(135deg, #0f2231 0%, #1b4157 55%, #285a3f 100%);
+  box-shadow: 0 14px 34px rgba(13, 35, 49, 0.35);
 }
 
-.badge {
-  display: inline-block;
+.eyebrow {
   margin: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #a24f00;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: rgba(247, 244, 239, 0.86);
 }
 
-.subtitle {
-  margin-top: 0.5rem;
+.hero-panel h1 {
+  margin: 0.4rem 0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1.06;
 }
 
-.status-grid {
+.hero-panel p {
+  max-width: 780px;
+}
+
+.health-pill-row {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.pill {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.metrics-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+.metric-card {
+  border-radius: 16px;
+  padding: 0.9rem;
+  border: 1px solid rgba(14, 42, 63, 0.14);
+  background: #f9f4e8;
+}
+
+.metric-card h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #4a4f59;
+}
+
+.metric-card p {
+  margin: 0.55rem 0 0;
+  font-size: 1.7rem;
+  line-height: 1;
+  font-weight: 700;
+  color: #0c273b;
+}
+
+.workspace-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: 1fr 1.1fr;
 }
 
-.card {
-  border: 1px solid #d7dbe0;
-  border-radius: 14px;
-  background: #ffffff;
+.planner-panel,
+.timeline-panel,
+.spot-panel {
+  border-radius: 20px;
   padding: 1rem;
-  text-align: left;
-  box-shadow: 0 8px 20px rgba(25, 31, 38, 0.06);
+  border: 1px solid rgba(13, 33, 45, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(5px);
 }
 
-.card h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1.15rem;
+.planner-form {
+  display: grid;
+  gap: 0.7rem;
 }
 
-.steps ol {
-  margin: 0;
-  padding-left: 1.2rem;
+.planner-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.88rem;
 }
 
-.steps li + li {
+.planner-form input,
+.planner-form select,
+.planner-form button {
+  border-radius: 11px;
+  border: 1px solid rgba(14, 42, 63, 0.2);
+  padding: 0.62rem 0.68rem;
+  font: inherit;
+}
+
+.planner-form button {
   margin-top: 0.35rem;
+  cursor: pointer;
+  background: #0f3a54;
+  color: #f7f4ef;
+  border-color: #0f3a54;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.planner-form button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #145275;
+}
+
+.planner-form button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.hint {
+  margin-top: 0.7rem;
+  font-size: 0.82rem;
+  color: #784f00;
+}
+
+.timeline-panel h3 {
+  margin: 0.7rem 0 0.3rem;
+}
+
+.timeline {
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.timeline li {
+  border-left: 3px solid #1e6a96;
+  padding: 0.3rem 0.6rem;
+  display: grid;
+  gap: 0.15rem;
+  background: #f5fafc;
+  border-radius: 8px;
+}
+
+.timeline strong {
+  color: #0e3b56;
+}
+
+.timeline small {
+  color: #4b5d68;
+}
+
+.safety-box {
+  margin-top: 0.9rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: #fff7e8;
+  border: 1px solid #f1d59e;
+}
+
+.safety-box h4 {
+  margin: 0 0 0.35rem;
+}
+
+.safety-box ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.spot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.7rem;
+}
+
+.spot-card {
+  border-radius: 12px;
+  border: 1px solid rgba(11, 43, 59, 0.13);
+  padding: 0.75rem;
+  background: #f8fcff;
+}
+
+.spot-card h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.spot-category {
+  margin: 0.35rem 0;
+  font-size: 0.8rem;
+  color: #55717f;
+}
+
+.error-banner {
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid #e7aeae;
+  background: #fff1f1;
+  color: #8b2424;
+  padding: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
 }

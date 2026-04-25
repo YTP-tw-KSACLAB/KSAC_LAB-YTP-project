@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "Hackathon starter with React + Node.js",
   "scripts": {
-    "dev": "concurrently -n client,server -c cyan,green \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "dev": "concurrently -n client,server,python -c cyan,green,yellow \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"npm run dev:python\"",
     "dev:client": "npm run dev --prefix client",
     "dev:server": "npm run dev --prefix server",
+    "dev:python": "python3 python_backend/app.py",
     "build": "npm run build --prefix client",
-    "start": "npm run start --prefix server"
+    "start": "npm run start --prefix server",
+    "start:python": "python3 python_backend/app.py"
   },
   "repository": {
     "type": "git",
