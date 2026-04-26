@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -29,33 +29,36 @@ const MapBounds = ({ steps }) => {
 };
 
 export default function MapComponent({ steps }) {
-  const [markers, setMarkers] = useState([]);
+  const markers = useMemo(() => {
+    return (steps || [])
+      .map((step, index) => {
+        const lat = Number(step.lat);
+        const lng = Number(step.lng);
 
-  useEffect(() => {
-    // If steps don't have lat/lng, we will assign a default Taipei center and add some offset
-    const defaultCenter = [25.0330, 121.5654]; // Taipei 101
-    
-    if (steps && steps.length > 0) {
-      const newMarkers = steps.map((step, index) => {
-        let lat = step.lat;
-        let lng = step.lng;
-        if (!lat || !lng) {
-          // Fake coordinates for visualization if API doesn't provide them
-          lat = defaultCenter[0] + (Math.random() - 0.5) * 0.05;
-          lng = defaultCenter[1] + (Math.random() - 0.5) * 0.05;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
         }
+
         return { ...step, lat, lng, id: index };
-      });
-      setMarkers(newMarkers);
-    } else {
-      setMarkers([]);
-    }
+      })
+      .filter(Boolean);
   }, [steps]);
 
-  const center = markers.length > 0 && markers[0].lat ? [markers[0].lat, markers[0].lng] : [25.0330, 121.5654];
+  if (markers.length === 0) {
+    return (
+      <div className="map-container-wrapper glass-panel" style={{ padding: '1.5rem', minHeight: '180px', display: 'grid', placeItems: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <strong>Dataset coordinates unavailable</strong>
+          <p style={{ margin: '0.4rem 0 0', color: 'var(--text-muted)' }}>This route has no latitude and longitude in the dataset, so no synthetic map pins are shown.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const center = [markers[0].lat, markers[0].lng];
 
   return (
-    <div className="map-container-wrapper" style={{ height: '300px', width: '100%', borderRadius: '12px', overflow: 'hidden', marginTop: '16px', zIndex: 0 }}>
+    <div className="map-container-wrapper" style={{ height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden', zIndex: 0 }}>
       <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

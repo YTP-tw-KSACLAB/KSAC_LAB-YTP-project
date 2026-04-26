@@ -4,7 +4,7 @@ import { useAppContext } from '../context/AppContext';
 
 export default function Layout() {
   const { 
-    user, setUser, flashMessage, error, health, overview, loadingInit,
+    user, setUser, flashMessage, error, health, overview, loadingInit, points,
     form, setForm, planning, setPlanning, setPlanResult, parseJsonSafely, setFlashMessage
   } = useAppContext();
 
@@ -22,6 +22,7 @@ export default function Layout() {
   const navItems = [
     { name: 'Home', path: '/home' },
     { name: 'Planner', path: '/planner' },
+    { name: 'Navigation', path: '/navigation' },
     { name: 'Reels', path: '/reels' },
     { name: 'Messages', path: '/messages' },
     { name: 'Notifications', path: '/notifications' },
@@ -118,6 +119,17 @@ export default function Layout() {
             )}
           </nav>
         </div>
+
+        {user && (
+          <div className="glass-panel" style={{ padding: '1rem', marginTop: 'auto', border: '1px solid var(--primary)', background: 'rgba(99, 102, 241, 0.05)' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.2rem' }}>💎</span> SnapPoints
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+              {points} <small style={{ fontSize: '0.7rem', color: 'var(--primary)' }}>pts</small>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Main Feed Outlet */}

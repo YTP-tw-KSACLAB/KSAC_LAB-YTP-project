@@ -5,7 +5,8 @@ import MapComponent from '../MapComponent';
 export default function Planner() {
   const { 
     spots, planning, setPlanning, 
-    planResult, setPlanResult, parseJsonSafely, setFlashMessage 
+    planResult, setPlanResult, parseJsonSafely, setFlashMessage,
+    points, addPoints, spendPoints
   } = useAppContext();
 
   // Workflow Stages: 'ideation', 'curation', 'navigation', 'checkout', 'success'
@@ -27,6 +28,8 @@ export default function Planner() {
   const [bookingProgress, setBookingProgress] = useState(0);
   const [bookingMessage, setBookingMessage] = useState('');
   const [confirmation, setConfirmation] = useState(null);
+  const [usePointsDiscount, setUsePointsDiscount] = useState(false);
+  const [pointsToSpend, setPointsToSpend] = useState(0);
 
   const vibes = ['All', '歷史建築', '夜市', '自然景觀', '博物館', '文創園區', '購物'];
 
@@ -128,13 +131,22 @@ export default function Planner() {
       setBookingProgress(step.p);
     }
 
+    if (usePointsDiscount && pointsToSpend > 0) {
+      await spendPoints(pointsToSpend);
+    }
+
     try {
       const res = await fetch('/api/book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cart: cartSpots })
+        body: JSON.stringify({ cart: cartSpots, discountApplied: usePointsDiscount })
       });
       const data = await parseJsonSafely(res);
+      
+      // Award points for completion
+      await addPoints(50); 
+      setFlashMessage("💎 You earned 50 SnapPoints for booking!");
+      
       setConfirmation(data);
       setStage('success');
     } catch (err) {
@@ -245,9 +257,12 @@ export default function Planner() {
                       className="glass-card" 
                       style={{ padding: '1.2rem', cursor: 'grab', animation: `fadeIn 0.6s ease-out ${i * 0.1}s forwards`, opacity: 0 }}
                     >
-                      <div style={{ height: '120px', background: `var(--tone-${(i % 4) + 1})`, borderRadius: '12px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>
-                        {spot.category.includes('夜市') ? '🍜' : spot.category.includes('博物館') ? '🏛️' : '📸'}
-                      </div>
+                      <img
+                        src={spot.image_url}
+                        alt={spot.name}
+                        loading="lazy"
+                        style={{ height: '120px', width: '100%', objectFit: 'cover', borderRadius: '12px', marginBottom: '1rem' }}
+                      />
                       <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.1rem' }}>{spot.name}</h4>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>{spot.category} · {spot.location}</p>
                     </div>
@@ -290,12 +305,15 @@ export default function Planner() {
                       draggable 
                       onDragStart={(e) => handleDragStart(e, spot)}
                       className="glass-card" 
-                      style={{ padding: '1rem', cursor: 'grab', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}
+                      style={{ padding: '0.8rem', cursor: 'grab', fontSize: '0.9rem', display: 'grid', gap: '0.7rem' }}
                     >
-                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        📍
-                      </div>
-                      <div style={{ overflow: 'hidden' }}>
+                      <img
+                        src={spot.image_url}
+                        alt={spot.name}
+                        loading="lazy"
+                        style={{ width: '100%', height: '92px', objectFit: 'cover', borderRadius: '10px' }}
+                      />
+                      <div style={{ overflow: 'hidden', padding: '0 0.2rem' }}>
                         <div style={{ fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{spot.name}</div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{spot.category}</div>
                       </div>
@@ -417,6 +435,42 @@ export default function Planner() {
                   <MapComponent steps={planResult?.plan?.steps || []} />
                 </div>
               </div>
+
+              {points > 0 && (
+                <div className="glass-panel" style={{ 
+                  padding: '1.5rem', borderRadius: '24px', border: '1px solid var(--primary)', 
+                  background: usePointsDiscount ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                  transition: 'all 0.3s'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <span style={{ fontSize: '1.5rem' }}>💎</span>
+                      <div>
+                        <div style={{ fontWeight: 'bold' }}>Use SnapPoints</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>You have {points} pts available</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setUsePointsDiscount(!usePointsDiscount);
+                        setPointsToSpend(usePointsDiscount ? 0 : Math.min(points, 100)); // Spend up to 100
+                      }}
+                      style={{ 
+                        background: usePointsDiscount ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                        border: 'none', color: 'white', padding: '0.5rem 1.2rem', borderRadius: '15px',
+                        cursor: 'pointer', transition: 'all 0.3s'
+                      }}
+                    >
+                      {usePointsDiscount ? 'Applied' : 'Apply'}
+                    </button>
+                  </div>
+                  {usePointsDiscount && (
+                    <div className="animate-fade-in" style={{ fontSize: '0.9rem', color: '#10b981', fontWeight: '500' }}>
+                      ✨ 10% Discount applied! (-100 points)
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <button 
@@ -483,6 +537,9 @@ export default function Planner() {
             
             <div className="glass-panel" style={{ padding: '3rem', textAlign: 'left', marginBottom: '4rem', border: '1px solid var(--primary)', background: 'rgba(99, 102, 241, 0.05)', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, right: 0, padding: '1rem', background: 'var(--primary)', color: 'white', fontWeight: 'bold', borderBottomLeftRadius: '20px' }}>VIP TICKET</div>
+              <div style={{ position: 'absolute', bottom: '1rem', right: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 'bold' }}>
+                <span style={{ fontSize: '1.2rem' }}>💎</span> +50 SnapPoints Earned
+              </div>
               
               <div style={{ marginBottom: '2.5rem' }}>
                 <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px' }}>Confirmation Number</small>

@@ -11,10 +11,12 @@ export default function Home() {
   const [savedPosts, setSavedPosts] = useState({});
   const [sharedPosts, setSharedPosts] = useState({});
 
-  const stories = spots.slice(0, 8);
+  const curatedSpots = useMemo(() => spots.filter((spot) => spot?.name && spot.image_url), [spots]);
+  const visiblePosts = useMemo(() => socialPosts.filter((post) => post?.image_url), [socialPosts]);
+  const stories = curatedSpots.slice(0, 8);
 
   const filteredSpots = useMemo(() => {
-    let next = [...spots];
+    let next = [...curatedSpots];
     const query = searchKeyword.trim().toLowerCase();
     if (query) {
       next = next.filter((spot) => {
@@ -23,7 +25,7 @@ export default function Home() {
       });
     }
     return next;
-  }, [searchKeyword, spots]);
+  }, [curatedSpots, searchKeyword]);
 
   const togglePostAction = (setter, postId) => {
     setter((previous) => ({
@@ -43,7 +45,7 @@ export default function Home() {
 
   const compactDescription = (description) => {
     if (!description) return 'No details available.';
-    const compact = description.replace(/\s+/g, ' ').trim();
+    const compact = description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     return compact.length > 150 ? `${compact.slice(0, 150)}...` : compact;
   };
 
@@ -110,7 +112,7 @@ export default function Home() {
         </article>
       )}
 
-      {socialPosts.map((post) => (
+      {visiblePosts.map((post) => (
         <article key={`post-${post.id}`} className="post-card friend-post glass-effect">
           <div className="post-header">
             <div className="avatar alt">{post.username?.slice(0, 1).toUpperCase() || 'U'}</div>
@@ -119,11 +121,7 @@ export default function Home() {
               <p>{post.location} · {new Date(post.created_at).toLocaleDateString()}</p>
             </div>
           </div>
-          {post.image_url ? (
-            <img src={post.image_url} alt="Post" className="post-image" />
-          ) : (
-            <div className="post-image placeholder" data-tone={post.id % 4} />
-          )}
+          <img src={post.image_url} alt={post.location || post.username || 'Post'} className="post-image" loading="lazy" />
           <p className="post-summary">{post.content}</p>
           <div className="post-actions">
             <button
@@ -134,7 +132,7 @@ export default function Home() {
               {likedPosts[`social-${post.id}`] ? 'Liked' : 'Like'}
             </button>
             <button type="button" className="action-btn clone-btn" onClick={() => handleVibeClone(post)}>
-              🪄 Vibe Clone
+              Clone Vibe
             </button>
           </div>
         </article>
@@ -151,7 +149,7 @@ export default function Home() {
                 <p>{spot.category} · {spot.location}</p>
               </div>
             </div>
-            <div className="post-image" data-tone={index % 4} />
+            <img src={spot.image_url} alt={spot.name} className="post-image" loading="lazy" />
             <p className="post-summary">{compactDescription(spot.description)}</p>
             <div className="post-actions">
               <button

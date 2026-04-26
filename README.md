@@ -32,7 +32,7 @@ python3 -m pip install -r python_backend/requirements.txt
 - Copy server/.env.example to server/.env
 - Copy python_backend/.env.example to python_backend/.env
 - Put your Gemini key in python_backend/.env as GEMINI_API_KEY
-- For a lightweight model, keep GEMINI_MODEL=gemini-1.5-flash-8b
+- For a lightweight model, use GEMINI_MODEL=gemini-2.5-flash-lite
 
 4. Run all services:
 

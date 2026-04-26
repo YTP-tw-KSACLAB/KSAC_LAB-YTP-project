@@ -12,6 +12,8 @@ const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://127.0.0.1:800
 
 const projectRoot = path.resolve(__dirname, '..');
 const datasetDir = path.join(projectRoot, 'dataset');
+const attractionImagesDir = path.join(projectRoot, 'tourist_attraction_images');
+const curatedSpotsPath = path.join(projectRoot, '精選景點_one_hot.csv');
 
 const datasetFiles = {
   scenic: 'Scenic_Spot_C_f.csv',
@@ -23,6 +25,222 @@ const datasetFiles = {
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use('/tourist_attraction_images', express.static(attractionImagesDir));
+
+let scenicRecordsPromise;
+let attractionImageIndexPromise;
+let curatedRowsPromise;
+
+function normalizeKey(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\s\p{P}\p{S}_]+/gu, '');
+}
+
+function encodeRelativePath(relativePath) {
+  return relativePath
+    .split(path.sep)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+function isValidUrl(value) {
+  return typeof value === 'string' && /^https?:\/\//i.test(value.trim());
+}
+
+function cleanText(value) {
+  return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function toTaiwanNameVariants(value) {
+  const base = cleanText(value);
+  if (!base) return [];
+
+  const variants = new Set([base]);
+  variants.add(base.replace(/台/g, '臺'));
+  variants.add(base.replace(/臺/g, '台'));
+  variants.add(base.replace(/[()（）]/g, ''));
+  return Array.from(variants);
+}
+
+async function readAllCsvRecords(fileName) {
+  return readCsvRecords(fileName, Number.MAX_SAFE_INTEGER);
+}
+
+async function loadScenicRecords() {
+  if (!scenicRecordsPromise) {
+    scenicRecordsPromise = readAllCsvRecords(datasetFiles.scenic);
+  }
+
+  return scenicRecordsPromise;
+}
+
+async function loadCuratedRows() {
+  if (!curatedRowsPromise) {
+    curatedRowsPromise = (async () => {
+      const content = await fs.readFile(curatedSpotsPath, 'utf8');
+      const lines = content.split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) return [];
+
+      const headers = parseCsvLine(lines[0]);
+      return lines.slice(1).map((line) => {
+        const values = parseCsvLine(line);
+        const record = {};
+        headers.forEach((header, index) => {
+          record[header] = values[index] || '';
+        });
+        return record;
+      });
+    })();
+  }
+
+  return curatedRowsPromise;
+}
+
+async function buildAttractionImageIndex() {
+  const imageIndex = new Map();
+
+  async function walk(directoryPath) {
+    const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name, 'zh-Hant'))) {
+      const entryPath = path.join(directoryPath, entry.name);
+
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+        continue;
+      }
+
+      const extension = path.extname(entry.name).toLowerCase();
+      if (!['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(extension)) {
+        continue;
+      }
+
+      const relativePath = path.relative(attractionImagesDir, entryPath);
+      const fileName = path.basename(entry.name, extension);
+      const folderNames = [];
+      let currentDir = path.dirname(entryPath);
+      while (currentDir.startsWith(attractionImagesDir) && currentDir !== attractionImagesDir) {
+        folderNames.push(path.basename(currentDir));
+        currentDir = path.dirname(currentDir);
+      }
+
+      for (const candidate of [fileName, ...folderNames]) {
+        const normalizedCandidate = normalizeKey(candidate);
+        if (normalizedCandidate && !imageIndex.has(normalizedCandidate)) {
+          imageIndex.set(normalizedCandidate, relativePath);
+        }
+      }
+    }
+  }
+
+  await walk(attractionImagesDir);
+  return imageIndex;
+}
+
+async function loadAttractionImageIndex() {
+  if (!attractionImageIndexPromise) {
+    attractionImageIndexPromise = buildAttractionImageIndex();
+  }
+
+  return attractionImageIndexPromise;
+}
+
+function resolveSpotImageUrl(name, imageIndex) {
+  for (const variant of toTaiwanNameVariants(name)) {
+    const imagePath = imageIndex.get(normalizeKey(variant));
+    if (imagePath) {
+      return `/tourist_attraction_images/${encodeRelativePath(imagePath)}`;
+    }
+  }
+  return '';
+}
+
+function resolveSpotLatitude(row) {
+  const value = Number(row.Py || row.lat || row.latitude);
+  return Number.isFinite(value) ? value : null;
+}
+
+function resolveSpotLongitude(row) {
+  const value = Number(row.Px || row.lng || row.longitude);
+  return Number.isFinite(value) ? value : null;
+}
+
+function extractCuratedTags(curatedRow) {
+  const tagMapping = {
+    室內: '室內',
+    戶外: '戶外',
+    親子友善: '親子友善',
+    無障礙: '無障礙',
+    文化歷史: '歷史建築',
+    自然生態: '自然景觀',
+    藝術展覽: '文創園區',
+    宗教信仰: '宗教',
+    購物娛樂: '購物',
+    博物館: '博物館',
+    溫泉: '溫泉',
+    免費入場: '免費',
+    夜間開放: '夜間',
+    表演藝術: '表演藝術',
+  };
+
+  return Object.entries(tagMapping)
+    .filter(([column]) => Number(curatedRow[column]) === 1)
+    .map(([, tag]) => tag);
+}
+
+function pickSpotCategory(curatedTags, scenicRow) {
+  const preferred = ['夜市', '博物館', '文創園區', '歷史建築', '自然景觀', '購物', '宗教', '溫泉'];
+  const tagHit = preferred.find((tag) => curatedTags.includes(tag));
+  if (tagHit) return tagHit;
+
+  return cleanText(scenicRow?.CAT1 || scenicRow?.CAT2 || scenicRow?.Class1 || 'Travel') || 'Travel';
+}
+
+function buildScenicLookup(rows) {
+  const lookup = new Map();
+
+  rows.forEach((row) => {
+    const candidateNames = [row.stitle, row.Name, row.name, row.名稱]
+      .map((value) => cleanText(value))
+      .filter(Boolean);
+
+    candidateNames.forEach((name) => {
+      toTaiwanNameVariants(name).forEach((variant) => {
+        const key = normalizeKey(variant);
+        if (key && !lookup.has(key)) {
+          lookup.set(key, row);
+        }
+      });
+    });
+  });
+
+  return lookup;
+}
+
+function buildCuratedSpotRecord(curatedRow, index, scenicLookup, imageIndex) {
+  const name = cleanText(curatedRow['景點名稱']);
+  if (!name) return null;
+
+  const imageUrl = resolveSpotImageUrl(name, imageIndex);
+  if (!imageUrl) return null;
+
+  const scenicRow = scenicLookup.get(normalizeKey(name));
+  const curatedTags = extractCuratedTags(curatedRow);
+
+  return {
+    id: scenicRow?.Id || `curated-${index + 1}`,
+    name,
+    category: pickSpotCategory(curatedTags, scenicRow),
+    location: cleanText(scenicRow?.Add || scenicRow?.address || scenicRow?.地址 || `${scenicRow?.Region || '臺北市'}${scenicRow?.Town || ''}` || '臺北市') || '臺北市',
+    description: cleanText(scenicRow?.Description || scenicRow?.Toldescribe || scenicRow?.xbody || name),
+    image_url: imageUrl,
+    lat: resolveSpotLatitude(scenicRow || {}),
+    lng: resolveSpotLongitude(scenicRow || {}),
+    tags: curatedTags,
+  };
+}
 
 function parseCsvLine(line) {
   const columns = [];
@@ -132,18 +350,22 @@ app.get('/api/spots', async (req, res) => {
   const limit = Math.max(1, Math.min(20, Number(req.query.limit) || 8));
 
   try {
-    const rows = await readCsvRecords(datasetFiles.scenic, limit);
-    const normalized = rows.map((row, index) => ({
-      id: index + 1,
-      name: row.stitle || row.name || row.名稱 || 'Unknown Spot',
-      category: row.CAT1 || row.CAT2 || row.類別 || 'Travel',
-      location: row.address || row.地址 || row.district || 'Taipei',
-      description: row.xbody || row.description || row.簡介 || 'No description available.',
-    }));
+    const [scenicRows, curatedRows, imageIndex] = await Promise.all([
+      loadScenicRecords(),
+      loadCuratedRows(),
+      loadAttractionImageIndex(),
+    ]);
+
+    const scenicLookup = buildScenicLookup(scenicRows);
+
+    const normalized = curatedRows
+      .map((row, index) => buildCuratedSpotRecord(row, index, scenicLookup, imageIndex))
+      .filter(Boolean)
+      .slice(0, limit);
 
     res.json({ spots: normalized });
   } catch (error) {
-    res.status(500).json({ error: `Failed to parse scenic spots: ${error.message}` });
+    res.status(500).json({ error: `Failed to parse curated spots: ${error.message}` });
   }
 });
 
@@ -174,6 +396,44 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const response = await fetch(`${pythonBackendUrl}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
+app.get('/api/user/:username/points', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/user/${req.params.username}/points`);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
+app.post('/api/user/add_points', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/user/add_points`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
+app.post('/api/user/spend_points', async (req, res) => {
+  try {
+    const response = await fetch(`${pythonBackendUrl}/user/spend_points`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body),

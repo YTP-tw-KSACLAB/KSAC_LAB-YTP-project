@@ -1,11 +1,12 @@
 .ig-layout {
-  width: min(1360px, calc(100% - 2rem));
+  width: 100%;
+  max-width: 1600px;
   margin: 0 auto;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px 1fr;
   gap: 2rem;
-  padding: 1.5rem 0;
+  padding: 1.5rem 2rem;
 }
 
 .ig-layout.has-right-rail {
@@ -77,10 +78,10 @@
 }
 
 .main-feed {
-  width: min(680px, 100%);
-  margin: 0 auto;
+  width: 100%;
   display: grid;
   gap: 1.5rem;
+  min-height: calc(100vh - 3rem);
 }
 
 .glass-effect, .utility-bar, .stories-row, .profile-card, .health-box, .metrics-box, .suggestions-box, .status-panel, .post-card, .auth-card {
@@ -745,4 +746,11 @@
 }
 .clone-btn:hover {
   background: rgba(16, 185, 129, 0.4);
+}
+
+/* Navigation specific */
+.active-layer {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
 }
