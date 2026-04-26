@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useLang } from '../context/LangContext';
 
 export default function Messages() {
   const { parseJsonSafely } = useAppContext();
+  const { t } = useLang();
   
   const friendsList = [
     { id: 'ai-agent', name: 'AI Travel Agent', subtitle: 'Always online', avatar: '🤖', isAi: true },
@@ -101,13 +103,13 @@ export default function Messages() {
             <div className="chat-window" style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {activeChat.isAi ? (
                 <>
-                  {chatMessages.length === 0 && <p className="chat-empty" style={{ margin: 'auto' }}>Ask me to plan a route or recommend a spot!</p>}
+                  {chatMessages.length === 0 && <p className="chat-empty" style={{ margin: 'auto' }}>{t('askMeToplan')}</p>}
                   {chatMessages.map((msg, idx) => (
                     <div key={idx} className={`chat-bubble ${msg.sender === 'user' ? 'user' : 'model'}`} style={{ maxWidth: '70%', alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start' }}>
                       {msg.text}
                     </div>
                   ))}
-                  {isChatLoading && <div className="chat-bubble model typing" style={{ alignSelf: 'flex-start' }}>Agent is typing...</div>}
+                  {isChatLoading && <div className="chat-bubble model typing" style={{ alignSelf: 'flex-start' }}>{t('agentTyping')}</div>}
                 </>
               ) : (
                 <>

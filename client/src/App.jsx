@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import { LangProvider } from './context/LangContext';
 import Layout from './pages/Layout';
 import Home from './pages/Home';
 import Messages from './pages/Messages';
@@ -13,6 +14,7 @@ import './App.css';
 
 function App() {
   return (
+    <LangProvider>
     <AppProvider>
       <BrowserRouter>
         <Routes>
@@ -32,6 +34,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AppProvider>
+    </LangProvider>
   );
 }
 

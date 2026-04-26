@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import { useLang, LangSwitcher } from '../context/LangContext';
 
 export default function Layout() {
-  const { 
+  const {
     user, setUser, flashMessage, error, health, overview, loadingInit, points,
     form, setForm, planning, setPlanning, setPlanResult, parseJsonSafely, setFlashMessage
   } = useAppContext();
+  const { t } = useLang();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,14 +22,20 @@ export default function Layout() {
   const [isLegalLoading, setIsLegalLoading] = useState(false);
 
   const navItems = [
-    { name: 'Home', path: '/home' },
-    { name: 'Planner', path: '/planner' },
-    { name: 'Navigation', path: '/navigation' },
-    { name: 'Reels', path: '/reels' },
-    { name: 'Messages', path: '/messages' },
-    { name: 'Notifications', path: '/notifications' },
-    { name: 'Profile', path: '/profile' }
+    { key: 'home',          icon: '🏠', name: t('home'),          path: '/home' },
+    { key: 'planner',       icon: '✈️', name: t('planner'),       path: '/planner' },
+    { key: 'navigation',    icon: '🗺️', name: t('navigation'),    path: '/navigation' },
+    { key: 'reels',         icon: '🎬', name: t('reels'),         path: '/reels' },
+    { key: 'messages',      icon: '💬', name: t('messages'),      path: '/messages' },
+    { key: 'notifications', icon: '🔔', name: t('notifications'), path: '/notifications' },
+    { key: 'profile',       icon: '👤', name: t('profile'),       path: '/profile' },
   ];
+
+  useEffect(() => {
+    if (!flashMessage) return;
+    const timer = setTimeout(() => setFlashMessage(''), 4000);
+    return () => clearTimeout(timer);
+  }, [flashMessage, setFlashMessage]);
 
   const handleAuth = async () => {
     const endpoint = isRegistering ? '/api/register' : '/api/login';
@@ -48,12 +56,12 @@ export default function Layout() {
   const AuthModal = () => (
     <div className="auth-modal">
       <div className="auth-card">
-        <h3>{isRegistering ? 'Sign Up' : 'Log In'}</h3>
-        <input placeholder="Username" onChange={(e) => setAuthData({...authData, username: e.target.value})} />
-        {isRegistering && <input placeholder="Email" onChange={(e) => setAuthData({...authData, email: e.target.value})} />}
-        <button onClick={handleAuth}>{isRegistering ? 'Register' : 'Login'}</button>
+        <h3>{isRegistering ? t('signUp') : t('logIn')}</h3>
+        <input placeholder={t('username')} onChange={(e) => setAuthData({...authData, username: e.target.value})} />
+        {isRegistering && <input placeholder={t('email')} onChange={(e) => setAuthData({...authData, email: e.target.value})} />}
+        <button onClick={handleAuth}>{isRegistering ? t('register') : t('login')}</button>
         <button onClick={() => setIsRegistering(!isRegistering)}>
-          {isRegistering ? 'Switch to Login' : 'Switch to Sign Up'}
+          {isRegistering ? t('switchToLogin') : t('switchToSignUp')}
         </button>
       </div>
     </div>
@@ -78,12 +86,12 @@ export default function Layout() {
   const topMetrics = useMemo(() => {
     if (!overview) return [];
     return [
-      { label: '景點資料', value: overview.scenicCount },
-      { label: '合法旅館', value: overview.hotelCount },
-      { label: '合法民宿', value: overview.hostelCount },
-      { label: '公車站牌', value: overview.busStopCount },
+      { label: t('scenicData'),   value: overview.scenicCount },
+      { label: t('legalHotels'),  value: overview.hotelCount },
+      { label: t('legalHostels'), value: overview.hostelCount },
+      { label: t('busStops'),     value: overview.busStopCount },
     ];
-  }, [overview]);
+  }, [overview, t]);
 
   return (
     <main className={`ig-layout ${location.pathname.startsWith('/home') ? 'has-right-rail' : ''}`}>
@@ -98,10 +106,10 @@ export default function Layout() {
               const isActive = location.pathname.startsWith(item.path);
               return (
                 <button
-                  key={item.name}
+                  key={item.key}
                   type="button"
                   onClick={() => {
-                    if (item.name === 'Profile' && !user) {
+                    if (item.key === 'profile' && !user) {
                       setShowAuth(true);
                     } else {
                       navigate(item.path);
@@ -109,15 +117,20 @@ export default function Layout() {
                   }}
                   className={`nav-item ${isActive ? 'active' : ''}`}
                 >
-                  <span className="nav-dot" />
+                  <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>{item.icon}</span>
                   {item.name}
                 </button>
               );
             })}
             {!user && (
-              <button className="nav-item" onClick={() => setShowAuth(true)}>Login/Sign Up</button>
+              <button className="nav-item" onClick={() => setShowAuth(true)}>{t('loginSignUp')}</button>
             )}
           </nav>
+
+          {/* Language switcher */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <LangSwitcher />
+          </div>
         </div>
 
         {user && (
@@ -134,7 +147,12 @@ export default function Layout() {
 
       {/* Main Feed Outlet */}
       <section className="main-feed">
-        {flashMessage && <p className="flash-banner">{flashMessage}</p>}
+        {flashMessage && (
+          <div className="flash-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <span>{flashMessage}</span>
+            <button onClick={() => setFlashMessage('')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1rem', opacity: 0.7, padding: '0 0.2rem', lineHeight: 1 }}>✕</button>
+          </div>
+        )}
         <Outlet />
       </section>
 
@@ -145,12 +163,12 @@ export default function Layout() {
             <div className="avatar large">{user ? user.slice(0, 2).toUpperCase() : 'GS'}</div>
             <div>
               <h3>{user ? user : 'Guest User'}</h3>
-              <p>{user ? 'Online' : 'Not logged in'}</p>
+              <p>{user ? t('online') : t('notLoggedIn')}</p>
             </div>
           </article>
 
           <section className="metrics-box">
-            <h4>✨ AI Suggested Routes</h4>
+            <h4>{t('aiSuggestedRoutes')}</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1rem' }}>
               <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.8rem', borderRadius: '8px' }}>
                 <strong style={{ display: 'block', marginBottom: '0.2rem' }}>☕ Dadaocheng Retro Walk</strong>
@@ -164,7 +182,7 @@ export default function Layout() {
           </section>
 
           <section className="suggestions-box">
-            <h4>🔥 Top Hot Routes from Friends</h4>
+            <h4>{t('topHotRoutes')}</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                 <div className="avatar mini" style={{ margin: 0 }}>F</div>
@@ -194,7 +212,7 @@ export default function Layout() {
             onClick={() => navigate(item.path)}
             className={`nav-item mobile-item ${location.pathname.startsWith(item.path) ? 'active' : ''}`}
           >
-            <span className="nav-dot" />
+            <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>{item.icon}</span>
             {item.name}
           </button>
         ))}

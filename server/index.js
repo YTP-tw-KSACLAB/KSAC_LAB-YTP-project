@@ -13,7 +13,7 @@ const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://127.0.0.1:800
 const projectRoot = path.resolve(__dirname, '..');
 const datasetDir = path.join(projectRoot, 'dataset');
 const attractionImagesDir = path.join(projectRoot, 'tourist_attraction_images');
-const curatedSpotsPath = path.join(projectRoot, '精選景點_one_hot.csv');
+const curatedSpotsPath = path.join(datasetDir, '精選景點_one_hot.csv');
 
 const datasetFiles = {
   scenic: 'Scenic_Spot_C_f.csv',
@@ -491,6 +491,32 @@ app.post('/api/plan', async (req, res) => {
         safety: ['Verify legal accommodation list before checkout.'],
       },
     });
+  }
+});
+
+// ─── OSRM route proxy (avoids browser CORS restrictions) ────────────────────
+app.get('/api/route', async (req, res) => {
+  const { from_lat, from_lng, to_lat, to_lng, profile = 'driving' } = req.query;
+  if (!from_lat || !from_lng || !to_lat || !to_lng) {
+    return res.status(400).json({ error: 'Missing coordinates' });
+  }
+
+  const osrmUrl =
+    `https://router.project-osrm.org/route/v1/${profile}/` +
+    `${from_lng},${from_lat};${to_lng},${to_lat}?overview=full&geometries=geojson`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const response = await fetch(osrmUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) return res.status(502).json({ error: 'OSRM error' });
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    clearTimeout(timer);
+    res.status(502).json({ error: error.message });
   }
 });
 

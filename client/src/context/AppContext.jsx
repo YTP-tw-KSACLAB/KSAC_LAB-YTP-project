@@ -83,29 +83,40 @@ export const AppProvider = ({ children }) => {
   const loadDashboard = useCallback(async () => {
     setError('')
     try {
-      const [healthResponse, overviewResponse, spotsResponse, postsResponse] = await Promise.all([
+      // Use allSettled so one failing endpoint doesn't crash the whole app
+      const [healthResult, overviewResult, spotsResult, postsResult] = await Promise.allSettled([
         fetch('/api/health'),
         fetch('/api/datasets/overview'),
         fetch('/api/spots?limit=20'),
         fetch('/api/posts'),
       ])
 
-      if (!healthResponse.ok || !overviewResponse.ok || !spotsResponse.ok) {
-        throw new Error('Unable to initialize from backend services.')
+      // Health and overview are required — fail fast only if both are completely unreachable
+      const healthOk = healthResult.status === 'fulfilled' && healthResult.value.ok
+      const overviewOk = overviewResult.status === 'fulfilled' && overviewResult.value.ok
+      if (!healthOk && !overviewOk) {
+        throw new Error('Unable to reach backend services. Please make sure the server is running.')
       }
 
-      const [healthJson, overviewJson, spotsJson, postsJson] = await Promise.all([
-        parseJsonSafely(healthResponse),
-        parseJsonSafely(overviewResponse),
-        parseJsonSafely(spotsResponse),
-        postsResponse ? parseJsonSafely(postsResponse) : { posts: [] },
-      ])
+      const healthJson  = healthOk  ? await parseJsonSafely(healthResult.value)   : {}
+      const overviewJson = overviewOk ? await parseJsonSafely(overviewResult.value) : {}
+
+      // Spots and posts are non-critical — degrade gracefully
+      let spotsJson = { spots: [] }
+      if (spotsResult.status === 'fulfilled' && spotsResult.value.ok) {
+        spotsJson = await parseJsonSafely(spotsResult.value)
+      }
+
+      let postsJson = { posts: [] }
+      if (postsResult.status === 'fulfilled' && postsResult.value.ok) {
+        postsJson = await parseJsonSafely(postsResult.value)
+      }
 
       setHealth(healthJson)
       setOverview(overviewJson)
       setSpots(spotsJson.spots || [])
       setSocialPosts(postsJson.posts || [])
-      
+
       // Also fetch points
       refreshPoints()
     } catch (bootError) {

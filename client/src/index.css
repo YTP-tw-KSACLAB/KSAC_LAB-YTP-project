@@ -127,3 +127,48 @@ h1, h2, h3, h4 {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Bounce pop for newly added cart count badge */
+@keyframes badgePop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.2); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* Shimmer skeleton for loading states */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite;
+}
+
+/* Glow ring on active/focused interactive elements */
+.glow-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
+}
+
+/* Flash banner slide-in from top */
+.flash-banner {
+  animation: flashSlide 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes flashSlide {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Spot card "+" add indicator on hover */
+.glass-card:hover .add-indicator {
+  opacity: 1;
+}
+
+.add-indicator {
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+

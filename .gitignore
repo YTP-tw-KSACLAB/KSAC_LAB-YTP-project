@@ -1,1 +1,2 @@
-.env
+python_backend/.env
+python_backend/.env.example

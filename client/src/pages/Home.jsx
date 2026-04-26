@@ -93,10 +93,10 @@ export default function Home() {
           <p className="post-summary">{plan.summary}</p>
           <div className="post-actions">
             <button type="button" className={`action-btn ${likedPosts.plan ? 'on' : ''}`} onClick={() => togglePostAction(setLikedPosts, 'plan')}>
-              {likedPosts.plan ? 'Liked' : 'Like'}
+              {likedPosts.plan ? '❤️ Liked' : '🤍 Like'}
             </button>
             <button type="button" className={`action-btn ${savedPosts.plan ? 'on' : ''}`} onClick={() => togglePostAction(setSavedPosts, 'plan')}>
-              {savedPosts.plan ? 'Saved' : 'Save'}
+              {savedPosts.plan ? '🔖 Saved' : '🔖 Save'}
             </button>
           </div>
           <ul className="timeline-list">
@@ -129,10 +129,17 @@ export default function Home() {
               className={`action-btn ${likedPosts[`social-${post.id}`] ? 'on' : ''}`}
               onClick={() => togglePostAction(setLikedPosts, `social-${post.id}`)}
             >
-              {likedPosts[`social-${post.id}`] ? 'Liked' : 'Like'}
+              {likedPosts[`social-${post.id}`] ? '❤️ Liked' : '🤍 Like'}
+            </button>
+            <button
+              type="button"
+              className={`action-btn ${savedPosts[`social-${post.id}`] ? 'on' : ''}`}
+              onClick={() => togglePostAction(setSavedPosts, `social-${post.id}`)}
+            >
+              {savedPosts[`social-${post.id}`] ? '🔖 Saved' : '🔖 Save'}
             </button>
             <button type="button" className="action-btn clone-btn" onClick={() => handleVibeClone(post)}>
-              Clone Vibe
+              ✨ Clone Vibe
             </button>
           </div>
         </article>
@@ -157,7 +164,14 @@ export default function Home() {
                 className={`action-btn ${likedPosts[postId] ? 'on' : ''}`}
                 onClick={() => togglePostAction(setLikedPosts, postId)}
               >
-                {likedPosts[postId] ? 'Liked' : 'Like'}
+                {likedPosts[postId] ? '❤️ Liked' : '🤍 Like'}
+              </button>
+              <button
+                type="button"
+                className={`action-btn ${savedPosts[postId] ? 'on' : ''}`}
+                onClick={() => togglePostAction(setSavedPosts, postId)}
+              >
+                {savedPosts[postId] ? '🔖 Saved' : '🔖 Save'}
               </button>
             </div>
           </article>
