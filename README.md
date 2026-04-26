@@ -1,7 +1,7 @@
 # Personalized and safety-guranteed Taipei Vibe Assistant
 旅遊時文化差異及訂房安全性疑慮甚多，我們用政府公開資料集與個人化助理改善
 
-- Team: 青年組第十六隊  KSAC_實驗室
+- Team: 高中組第十六隊  KSAC_實驗室
 - Topic: 賽題B 行旅台北 ── 行腳台北 × 行樂台北
 
 ## 主要功能：
